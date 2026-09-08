@@ -1,0 +1,43 @@
+services:
+  standalone:
+    image: ghcr.io/ferriskey/ferriskey-standalone
+    environment:
+      DATABASE_HOST: db
+      DATABASE_NAME: ferriskey
+      DATABASE_USER: ferriskey
+      DATABASE_PASSWORD: ferriskey
+      SERVER_ROOT_PATH: /api
+      ALLOWED_ORIGINS: http://localhost:8090
+      WEBAPP_URL: http://localhost:8090
+    ports:
+      - 8090:80
+  db:
+    image: postgres:18.2
+    environment:
+      POSTGRES_DB: ferriskey
+      POSTGRES_USER: ferriskey
+      POSTGRES_PASSWORD: ferriskey
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ferriskey"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  db-migrations:
+    image: ghcr.io/ferriskey/ferriskey-api
+    entrypoint: ["sqlx"]
+    command:
+      ["migrate", "run", "--source", "/usr/local/src/ferriskey/migrations"]
+    environment:
+      DATABASE_URL: postgresql://ferriskey:ferriskey@db/ferriskey
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    name: ferriskey_pgdata
