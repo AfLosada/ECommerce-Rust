@@ -1,82 +1,60 @@
 use async_graphql::{
     dynamic::Schema,
-    http::{GraphQLPlaygroundConfig, playground_source},
+    http::{playground_source, GraphQLPlaygroundConfig},
 };
+use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
-    Json, Router,
-    http::StatusCode,
-    response::{Html, IntoResponse},
-    routing::{get, post},
+    extract::State,
+    response::{self, IntoResponse},
+    routing::get,
+    Router,
 };
+use dotenv::dotenv;
+use sea_orm::Database;
+use seaography::{async_graphql, lazy_static::lazy_static};
+use std::env;
+use tokio::net::TcpListener;
 
-use sea_orm::{Database, DatabaseConnection, Schema};
-use seaography::async_graphql::{
-    Data,
-    http::{GraphQLPlaygroundConfig, playground_source},
-};
-use serde::{Deserialize, Serialize};
-
-pub mod model;
-
-use model::user::user;
-
-#[handler]
-async fn graphql_playground() -> impl IntoResponse {
-    Html(playground_source(GraphQLPlaygroundConfig::new(&ENDPOINT)))
+lazy_static! {
+    static ref URL: String = env::var("URL").unwrap_or("localhost:8000".into());
+    static ref ENDPOINT: String = env::var("ENDPOINT").unwrap_or("/".into());
+    static ref DATABASE_URL: String =
+        env::var("DATABASE_URL").expect("DATABASE_URL environment variable not set");
+    static ref DEPTH_LIMIT: Option<usize> = env::var("DEPTH_LIMIT").map_or(None, |data| Some(
+        data.parse().expect("DEPTH_LIMIT is not a number")
+    ));
+    static ref COMPLEXITY_LIMIT: Option<usize> = env::var("COMPLEXITY_LIMIT")
+        .map_or(None, |data| {
+            Some(data.parse().expect("COMPLEXITY_LIMIT is not a number"))
+        });
 }
 
-#[handler]
-async fn graphql_handler(schema: Data, req: GraphQLRequest) -> GraphQLResponse {
-    let req = req.0;
+async fn graphql_playground() -> impl IntoResponse {
+    response::Html(playground_source(GraphQLPlaygroundConfig::new(&*ENDPOINT)))
+}
+
+async fn graphql_handler(State(schema): State<Schema>, req: GraphQLRequest) -> GraphQLResponse {
+    let req = req.into_inner();
     schema.execute(req).await.into()
 }
 
 #[tokio::main]
 async fn main() {
-    let db = Database::connect("sqlite://auth.db?mode=rwc")
+    dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_test_writer()
+        .init();
+    let db = Database::connect(&*DATABASE_URL)
         .await
         .expect("Fail to initialize database connection");
-    // synchronizes database schema with entity definitions
-    db.get_schema_builder().register(user::Entity);
-    // initialize tracing
-    tracing_subscriber::fmt::init();
 
-    // build our application with a route
+    let schema = auth::query_root::schema(db, *DEPTH_LIMIT, *COMPLEXITY_LIMIT).unwrap();
     let app = Router::new()
-        // `GET /` goes to `root`
-        .route("/", get(root))
-        // `POST /users` goes to `create_user`
-        .route("/users", post(create_user));
-
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await;
-}
-
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
-}
-
-async fn create_user(Json(payload): Json<CreateUser>) -> (StatusCode, Json<User>) {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
-
-    (StatusCode::CREATED, Json(user))
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
+        .route(&*ENDPOINT, get(graphql_playground).post(graphql_handler))
+        .with_state(schema);
+    println!("Visit GraphQL Playground at http://{}", *URL);
+    axum::serve(TcpListener::bind(&*URL).await.unwrap(), app)
+        .await
+        .unwrap();
 }

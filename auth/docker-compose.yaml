@@ -4,8 +4,6 @@ services:
     container_name: sqlite_cli
     volumes:
       - ./db_data:/db
-    # Installs sqlite3 and keeps the container running in the background
-    port: 3000:80
     command: >
       sh -c "apk add --no-cache sqlite && tail -f /dev/null"
     restart: unless-stopped
