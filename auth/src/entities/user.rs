@@ -10,10 +10,21 @@ pub struct Model {
     pub username: String,
     pub email: String,
     pub password: String,
+    #[sea_orm(has_one)]
+    pub profile: HasOne<super::profile::Entity>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(has_one = "super::profile::Entity")]
+    Profile,
+}
+
+impl Related<super::profile::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Profile.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 

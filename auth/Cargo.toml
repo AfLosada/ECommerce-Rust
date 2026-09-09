@@ -30,4 +30,4 @@ features = ["graphql-playground", "with-decimal", "with-chrono"]
 serde_json = { version = "1.0.103" }
 
 [workspace]
-members = [".", "migration"]
+members = []

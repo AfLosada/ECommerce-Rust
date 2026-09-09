@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod profile;
 pub mod user;
 
 seaography::register_entity_modules!([user,]);

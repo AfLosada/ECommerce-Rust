@@ -48,6 +48,7 @@ async fn main() {
     let db = Database::connect(&*DATABASE_URL)
         .await
         .expect("Fail to initialize database connection");
+    db.get_schema_registry(module_path!().split("::").next().unwrap());
 
     let schema = auth::query_root::schema(db, *DEPTH_LIMIT, *COMPLEXITY_LIMIT).unwrap();
     let app = Router::new()
