@@ -1,5 +1,5 @@
 [package]
-edition = "2021"
+edition = "2024"
 name = "auth"
 version = "0.1.0"
 
@@ -20,14 +20,18 @@ features = [
   "schema-sync",
   "entity-registry",
 ]
-migration = { path = "migration" }
 
 [dependencies.seaography]
 version = "~2.0.0-rc.9"                                          # seaography version
 features = ["graphql-playground", "with-decimal", "with-chrono"]
 
 [dev-dependencies]
+serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.103" }
 
 [workspace]
 members = []
+
+[features]
+rbac = ["seaography/rbac"]
+field-pluralize = ["seaography/field-pluralize"]

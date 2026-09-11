@@ -1,13 +1,13 @@
 use async_graphql::{
     dynamic::Schema,
-    http::{playground_source, GraphQLPlaygroundConfig},
+    http::{GraphQLPlaygroundConfig, playground_source},
 };
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
+    Router,
     extract::State,
     response::{self, IntoResponse},
     routing::get,
-    Router,
 };
 use dotenv::dotenv;
 use sea_orm::Database;
@@ -48,7 +48,10 @@ async fn main() {
     let db = Database::connect(&*DATABASE_URL)
         .await
         .expect("Fail to initialize database connection");
-    db.get_schema_registry(module_path!().split("::").next().unwrap());
+    db.get_schema_registry("auth::entities::*")
+        .sync(&db)
+        .await
+        .expect("Fail to generate schema registry");
 
     let schema = auth::query_root::schema(db, *DEPTH_LIMIT, *COMPLEXITY_LIMIT).unwrap();
     let app = Router::new()

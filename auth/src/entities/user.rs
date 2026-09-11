@@ -2,6 +2,7 @@
 
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "user")]
 pub struct Model {
@@ -14,19 +15,4 @@ pub struct Model {
     pub profile: HasOne<super::profile::Entity>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_one = "super::profile::Entity")]
-    Profile,
-}
-
-impl Related<super::profile::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Profile.def()
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {}
