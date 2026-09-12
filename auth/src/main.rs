@@ -1,3 +1,7 @@
+mod entities;
+mod integration;
+mod shared;
+
 use async_graphql::{
     dynamic::Schema,
     http::{GraphQLPlaygroundConfig, playground_source},
@@ -6,7 +10,8 @@ use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
     Router,
     extract::State,
-    response::{self, IntoResponse},
+    http::StatusCode,
+    response::{self, IntoResponse, Response},
     routing::get,
 };
 use dotenv::dotenv;
